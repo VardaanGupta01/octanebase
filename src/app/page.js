@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ProductCard from "../../components/ProductCard";
+import ChatStylist from "../../components/ChatStylist";
 
 export default function Home() {
   // 1. THE MEMORY (State)
@@ -38,6 +39,11 @@ export default function Home() {
             Book an Appointment
           </button>
         </div>
+      </div>
+
+      {/* --- AI CHAT SECTION --- */}
+      <div className="w-full mb-24 px-4">
+        <ChatStylist />
       </div>
 
       {/* --- CATALOG SECTION --- */}
