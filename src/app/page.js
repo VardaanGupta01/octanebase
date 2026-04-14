@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ProductCard from "../../components/ProductCard";
 import ChatStylist from "../../components/ChatStylist";
+import CarVisualizer from "../../components/CarVisualizer";
 
 
 export default function Home() {
@@ -87,6 +88,12 @@ export default function Home() {
           )}
 
         </div>
+      </div>
+
+      {/* 3D Visualizer yahan lagana hai */}
+      <div className="p-8">
+        <h1 className="text-4xl font-bold text-center mb-8">Experience Your Ride</h1>
+        <CarVisualizer />
       </div>
 
     </main>

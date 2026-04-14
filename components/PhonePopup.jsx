@@ -11,12 +11,26 @@ export default function PhonePopup() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    // Agar user logged in hai aur abhi tak number submit nahi kiya hai
-    if (session && !isSubmitted) {
-      // 2 second ka delay taaki page load hone ke baad aaram se popup aaye (Premium feel)
-      const timer = setTimeout(() => setShowPopup(true), 2000);
-      return () => clearTimeout(timer);
-    }
+    // 🕵️‍♂️ Naya SDE Function: Backend se check karna
+    const checkPhoneNumber = async () => {
+      // Agar user logged in hai aur usne abhi submit nahi kiya hai
+      if (session && !isSubmitted) {
+        try {
+          const res = await fetch("/api/update-phone");
+          const data = await res.json();
+
+          // Asli Jadoo: Agar database mein number NAHI hai, tabhi 2 second baad popup dikhao
+          if (!data.hasPhone) {
+            const timer = setTimeout(() => setShowPopup(true), 2000);
+            return () => clearTimeout(timer); // Memory leak bachane ke liye
+          }
+        } catch (error) {
+          console.error("Check failed");
+        }
+      }
+    };
+
+    checkPhoneNumber();
   }, [session, isSubmitted]);
 
   const handleSubmit = async () => {
