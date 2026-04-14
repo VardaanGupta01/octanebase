@@ -4,6 +4,7 @@ import { useState } from "react";
 import ProductCard from "../../components/ProductCard";
 import ChatStylist from "../../components/ChatStylist";
 
+
 export default function Home() {
   // 1. THE MEMORY (State)
   // 'searchQuery' mein user ki typing save hogi, aur 'setSearchQuery' usko update karega.
