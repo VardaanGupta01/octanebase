@@ -1,8 +1,9 @@
-// src/components/CarVisualizer.jsx
+// components/CarVisualizer.jsx
 "use client";
 
-import { Suspense } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
+import { motion } from "framer-motion"; // ✅ Draggable UI ke liye
 import { 
   OrbitControls, 
   Environment, 
@@ -12,73 +13,130 @@ import {
   PerspectiveCamera
 } from "@react-three/drei";
 
-function RealCarModel() {
+function RealCarModel({ customColor, rimColor }) {
   const { scene } = useGLTF('/creta.glb');
   
-  // 💡 Agar car bohot choti dikhe toh scale badha dena (e.g., scale={2})
-  // Isko exactly [0, 0, 0] par rakhte hain bina kisi extra wrapper ke
-  return <primitive object={scene} scale={1.5} position={[0, 0.45, 0]} />;
+  useEffect(() => {
+    scene.traverse((child) => {
+      if (child.isMesh) {
+        const name = child.name.toLowerCase();
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        // 🎨 1. TARGET: CAR BODY (Metal Paint)
+        if (name.includes('body') || name.includes('paint') || name.includes('exterior')) {
+          child.material = child.material.clone(); 
+          child.material.color.set(customColor);
+          child.material.metalness = 0.8; 
+          child.material.roughness = 0.2;
+        }
+
+        // 🛞 2. TARGET: ONLY ALLOYS (Not Rubber)
+        // Hum 'tire' aur 'rubber' ko exclude karenge taaki wo kaale hi rahein
+        if ((name.includes('rim') || name.includes('wheel') || name.includes('alloy') || name.includes('spoke')) 
+             && !name.includes('tire') && !name.includes('rubber')) {
+          child.material = child.material.clone();
+          child.material.color.set(rimColor);
+          child.material.metalness = 1.0; // Chromic look
+          child.material.roughness = 0.1; // Smooth metal
+        }
+
+        // 🔘 3. TARGET: TYRES (Keep them Matte Black)
+        if (name.includes('tire') || name.includes('rubber')) {
+          child.material = child.material.clone();
+          child.material.color.set("#111111"); // Pure rubber black
+          child.material.metalness = 0;
+          child.material.roughness = 0.9; // No shine for rubber
+        }
+      }
+    });
+  }, [scene, customColor, rimColor]);
+
+  return <primitive object={scene} scale={1.8} position={[0, 0.54, 0]} />;
 }
 
 export default function CarVisualizer() {
+  const [paint, setPaint] = useState("#222222");
+  const [rimColor, setRimColor] = useState("#c0c0c0"); // Silver Alloys default
+
   return (
-    <div className="relative w-full h-[600px] bg-[#111] rounded-3xl overflow-hidden border border-gray-800 shadow-2xl">
+    <div className="relative w-full h-[650px] bg-[#050505] rounded-3xl overflow-hidden border border-white/5 shadow-2xl">
       
-      {/* Label Overlay */}
-      <div className="absolute top-6 left-6 z-10 pointer-events-none">
-        <h2 className="text-white text-2xl font-black tracking-tighter uppercase italic">
-          <span className="text-red-600">Octane</span> Studio
-        </h2>
-      </div>
+      {/* 🖱️ MOVABLE (DRAGGABLE) UI PANEL */}
+      <motion.div 
+        drag 
+        dragConstraints={{ left: -1000, right: 0, top: 0, bottom: 400 }} // Bounds set karein
+        className="absolute top-6 right-6 z-20 w-64 cursor-move active:cursor-grabbing"
+      >
+        <div className="bg-black/60 backdrop-blur-2xl p-5 rounded-3xl border border-white/10 shadow-2xl">
+          <div className="flex items-center justify-between mb-4">
+             <h3 className="text-white font-bold text-[10px] tracking-widest uppercase italic">Configurator</h3>
+             <div className="w-8 h-1 bg-white/20 rounded-full" /> {/* Drag handle indicator */}
+          </div>
 
+          {/* Paint Archive */}
+          <div className="mb-6">
+            <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-3">Paint Archive</p>
+            <div className="flex flex-wrap gap-2">
+              {["#dc2626", "#000000", "#1e3a8a", "#ffffff", "#4b5563"].map((c) => (
+                <button key={c} onClick={() => setPaint(c)} style={{ backgroundColor: c }}
+                  className={`w-7 h-7 rounded-full border-2 transition-transform ${paint === c ? 'border-white scale-110' : 'border-transparent'}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Alloy Finish */}
+          <div>
+            <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-3">Alloy Finish</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { name: "Silver", code: "#c0c0c0" },
+                { name: "Gloss Black", code: "#080808" },
+                { name: "Gunmetal", code: "#444444" },
+                { name: "Gold", code: "#d4af37" }
+              ].map((alloy) => (
+                <button key={alloy.code} onClick={() => setRimColor(alloy.code)}
+                  className={`py-2 rounded-lg text-[9px] font-bold border transition-all ${rimColor === alloy.code ? 'bg-white text-black border-white' : 'text-white border-white/10 hover:bg-white/5'}`}>
+                  {alloy.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Main Studio View */}
       <Canvas shadows>
-        {/* Background Light Grey/Black mix */}
-        <color attach="background" args={['#0a0a0a']} />
-        
-        <PerspectiveCamera makeDefault position={[5, 3, 5]} fov={40} />
+        <color attach="background" args={['#050505']} />
+        <PerspectiveCamera makeDefault position={[6, 3, 6]} fov={30} />
 
-        {/* 1. POWERFUL LIGHTING (Ghar ki saari lights on kar di) */}
-        <ambientLight intensity={1.5} /> 
-        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} castShadow />
-        <pointLight position={[-10, -10, -10]} intensity={1} color="#red" />
+        <ambientLight intensity={0.4} /> 
+        <spotLight position={[10, 15, 10]} angle={0.25} penumbra={1} intensity={3} castShadow />
+        <rectAreaLight width={5} height={5} intensity={5} position={[0, 5, 0]} rotation={[-Math.PI / 2, 0, 0]} />
 
-        {/* 2. ENVIRONMENT (Shiny reflections ke liye) */}
-        <Environment preset="city" /> 
+        <Environment preset="studio" />
 
         <Suspense fallback={null}>
-          <group position={[0, -0.5, 0]}>
-            <RealCarModel />
-
-            {/* 3. PREMIUM FLOOR REFLECTION (Floor exactly car ke neeche) */}
+          <group position={[0, -0.7, 0]}>
+            <RealCarModel customColor={paint} rimColor={rimColor} />
+            
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-              <planeGeometry args={[20, 20]} />
+              <planeGeometry args={[100, 100]} />
               <MeshReflectorMaterial
-                blur={[300, 100]}
+                blur={[400, 100]}
                 resolution={1024}
                 mixBlur={1}
-                mixStrength={60}
+                mixStrength={80}
                 roughness={1}
-                depthScale={1.2}
-                minDepthThreshold={0.4}
-                maxDepthThreshold={1.4}
-                color="#151515"
-                metalness={0.5}
+                color="#050505"
+                metalness={0.8}
               />
             </mesh>
-            
-            {/* Real shadows on the ground */}
-            <ContactShadows resolution={1024} scale={10} blur={2} opacity={0.75} far={5} color="#000000" />
+            <ContactShadows resolution={1024} scale={20} blur={2} opacity={0.7} far={10} />
           </group>
         </Suspense>
 
-        <OrbitControls 
-          enablePan={false} 
-          autoRotate={true} 
-          autoRotateSpeed={1.0}
-          maxPolarAngle={Math.PI / 2.1} 
-          minDistance={2}
-          maxDistance={10}
-        />
+        <OrbitControls enablePan={false} minDistance={5} maxDistance={15} maxPolarAngle={Math.PI / 2.0} />
       </Canvas>
     </div>
   );
